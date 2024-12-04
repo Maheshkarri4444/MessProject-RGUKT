@@ -15,7 +15,7 @@ const complaintSchema = new mongoose.Schema(
         related: {
             type: String,
             required: true,
-            enum: ["water", "food", "cleaning", "other"], 
+            enum: ["water", "food", "cleaning","tables" , "chairs" , "workers" ,"other"], 
         },
         other: {
             type: String,

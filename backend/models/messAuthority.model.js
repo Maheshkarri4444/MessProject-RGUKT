@@ -15,6 +15,16 @@ const messAuthoritySchema = new mongoose.Schema(
             type: String,
             required:true,
         },
+        mobile: {
+            type: String, // Use String if you plan to store numbers with country codes or spaces
+            required: true,
+            validate: {
+                validator: function (v) {
+                    return /^\d{10}$/.test(v); // Validate mobile numbers as 10 digits
+                },
+                message: (props) => `${props.value} is not a valid mobile number!`,
+            },
+        },
         password: {
             type: String,
             minlength: 5,

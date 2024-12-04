@@ -141,7 +141,7 @@ export const mrLogout = (req, res) => {
 /** MESS AUTHORITY CONTROLLERS **/
 export const higherSignup = async (req, res) => {
     try {
-        const { username, name, role, password, confirmPassword } = req.body;
+        const { username, name, mobile , role, password, confirmPassword } = req.body;
 
         if (password !== confirmPassword) {
             return res.status(400).json({ error: "Passwords don't match" });
@@ -159,6 +159,7 @@ export const higherSignup = async (req, res) => {
             username,
             name,
             role,
+            mobile,
             password: hashedPassword,
         });
 
