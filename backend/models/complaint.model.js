@@ -5,7 +5,7 @@ const complaintSchema = new mongoose.Schema(
         senderId: {
             type: mongoose.Schema.Types.ObjectId,  // Reference to the user who created the complaint
             required: true,
-            ref: "User",  // Reference to the User model
+            ref: "Student",  // Reference to the User model
         },
         mess_number: {
             type: String,
@@ -26,6 +26,11 @@ const complaintSchema = new mongoose.Schema(
                 },
                 message: "'other' field must be filled if 'related' is 'other'",
             },
+        },
+        complaint_title:{
+            type:String,
+            required:true,
+            minlength:5
         },
         complaint_message: {
             type: String,

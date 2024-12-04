@@ -1,5 +1,4 @@
 import jwt from "jsonwebtoken";
-import Student from "../models/student.model.js";
 import Mr from "../models/mr.model.js"; // Assuming you have a model for MR
 import MessAuthority from "../models/messAuthority.model.js"; // Assuming you have a model for MessAuthority
 
@@ -17,13 +16,8 @@ const protectRoute = async (req, res, next) => {
             return res.status(401).json({ error: "Unauthorized - Invalid Token" });
         }
 
-        // Check in the Student collection
-        let user = await Student.findById(decoded.userId).select("-password");
-
-        // If not found in Student, check in the MR collection
-        if (!user) {
-            user = await Mr.findById(decoded.userId).select("-password");
-        }
+        // Check in the Mr collection
+        let user = await Mr.findById(decoded.userId).select("-password");
 
         // If not found in MR, check in the MessAuthority collection
         if (!user) {

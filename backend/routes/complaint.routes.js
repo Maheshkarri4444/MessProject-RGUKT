@@ -5,11 +5,9 @@ import upload from "../middleware/multer.js";
 
 const router = express.Router();
 
-router.post("/:messid",protectRoute, upload.single('image'),complaint);
+router.post("/create/:messid",protectRoute, upload.single('image'),complaint);
 router.put("/update/:complaintId",protectRoute, upload.single("image"),updateComplaint);
 router.delete("/delete/:complaintId",protectRoute,deleteComplaint);
-
-
 
 
 export default router;

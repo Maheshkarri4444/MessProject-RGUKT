@@ -1,101 +1,200 @@
 import bcrypt from "bcryptjs";
-import User from "../models/user.model.js";
+import Student from "../models/student.model.js";
+import MR from "../models/mr.model.js";
+import MessAuthority from "../models/messAuthority.model.js";
 import generateTokenAndSetCookie from "../utils/generateToken.js";
 
-export const signup = async (req, res) => {
-	try {
-		const { fullName, username, password, confirmPassword, gender } = req.body;
+/** STUDENT CONTROLLERS **/
+export const studentSignup = async (req, res) => {
+    try {
+        const { studentname, id, mobile, password, confirmPassword, currentMess } = req.body;
 
-        const token = req.cookies.jwt;
-        console.log("at login" , token);
-        if (token) {
-            res.clearCookie('jwt'); // Clear the token from cookies
+        if (password !== confirmPassword) {
+            return res.status(400).json({ error: "Passwords don't match" });
         }
 
-		if (password !== confirmPassword) {
-			return res.status(400).json({ error: "Passwords don't match" });
-		}
+        const studentExists = await Student.findOne({ id });
+        if (studentExists) {
+            return res.status(400).json({ error: "Student ID already exists" });
+        }
 
-		const user = await User.findOne({ username });
+        const salt = await bcrypt.genSalt(10);
+        const hashedPassword = await bcrypt.hash(password, salt);
 
-		if (user) {
-			return res.status(400).json({ error: "Username already exists" });
-		}
+        const newStudent = new Student({
+            studentname,
+            id,
+            mobile,
+            password: hashedPassword,
+            currentMess,
+        });
 
-		// HASH PASSWORD HERE
-		const salt = await bcrypt.genSalt(10);
-		const hashedPassword = await bcrypt.hash(password, salt);
+        await newStudent.save();
+        generateTokenAndSetCookie(newStudent._id, res);
 
-		// https://avatar-placeholder.iran.liara.run/
-
-		const boyProfilePic = `https://avatar.iran.liara.run/public/boy?username=${username}`;
-		const girlProfilePic = `https://avatar.iran.liara.run/public/girl?username=${username}`;
-
-		const newUser = new User({
-			fullName,
-			username,
-			password: hashedPassword,
-			gender,
-		});
-
-		if (newUser) {
-			// Generate JWT token here
-			generateTokenAndSetCookie(newUser._id, res);
-			await newUser.save();
-
-			res.status(201).json({
-				_id: newUser._id,
-				fullName: newUser.fullName,
-				username: newUser.username,
-				profilePic: newUser.profilePic,
+        res.status(201).json({
+			 _id: newStudent._id, 
+			 studentname: newStudent.studentname,
+			 currentMess: newStudent.currentMess 
 			});
-		} else {
-			res.status(400).json({ error: "Invalid user data" });
-		}
-	} catch (error) {
-		console.log("Error in signup controller", error.message);
-		res.status(500).json({ error: "Internal Server Error" });
-	}
+    } catch (error) {
+        console.error("Error in student signup:", error.message);
+        res.status(500).json({ error: "Internal Server Error" });
+    }
 };
 
-export const login = async (req, res) => {
-	try {
-		// console.log(req.body)
-		const { username, password } = req.body;
-		// console.log(req.body);
+export const studentLogin = async (req, res) => {
+    try {
+        const { id, password } = req.body;
+        const student = await Student.findOne({ id });
 
-        const token = req.cookies.jwt;
-        console.log("at login" , token);
-        if (token) {
-            res.clearCookie('jwt'); // Clear the token from cookies
+        if (!student || !(await bcrypt.compare(password, student.password))) {
+            return res.status(400).json({ error: "Invalid ID or password" });
         }
-		const user = await User.findOne({ username });
-		const isPasswordCorrect = await bcrypt.compare(password, user?.password || "");
 
-		if (!user || !isPasswordCorrect) {
-			return res.status(400).json({ error: "Invalid username or password" });
-		}
-
-		generateTokenAndSetCookie(user._id, res);
-
-		res.status(200).json({
-			_id: user._id,
-			fullName: user.fullName,
-			username: user.username,
-			profilePic: user.profilePic,
-		});
-	} catch (error) {
-		console.log("Error in login controller", error.message);
-		res.status(500).json({ error: "Internal Server Error" });
-	}
+        generateTokenAndSetCookie(student._id, res);
+        res.status(200).json({ _id: student._id, studentname: student.studentname });
+    } catch (error) {
+        console.error("Error in student login:", error.message);
+        res.status(500).json({ error: "Internal Server Error" });
+    }
 };
 
-export const logout = (req, res) => {
-	try {
-		res.cookie("jwt", "", { maxAge: 0 });
-		res.status(200).json({ message: "Logged out successfully" });
-	} catch (error) {
-		console.log("Error in logout controller", error.message);
-		res.status(500).json({ error: "Internal Server Error" });
-	}
+export const studentLogout = (req, res) => {
+    try {
+        res.cookie("jwt", "", { maxAge: 0 });
+        res.status(200).json({ message: "Logged out successfully" });
+    } catch (error) {
+        console.error("Error in student logout:", error.message);
+        res.status(500).json({ error: "Internal Server Error" });
+    }
+};
+
+/** MR CONTROLLERS **/
+export const mrSignup = async (req, res) => {
+    try {
+        const { studentname, id, mobile, password, confirmPassword, year, currentMess, class: className } = req.body;
+
+        if (password !== confirmPassword) {
+            return res.status(400).json({ error: "Passwords don't match" });
+        }
+
+        const mrExists = await MR.findOne({ id });
+        if (mrExists) {
+            return res.status(400).json({ error: "MR ID already exists" });
+        }
+
+        const salt = await bcrypt.genSalt(10);
+        const hashedPassword = await bcrypt.hash(password, salt);
+
+        const newMR = new MR({
+            studentname,
+            id,
+            mobile,
+            password: hashedPassword,
+            year,
+            currentMess,
+            class: className,
+        });
+
+        await newMR.save();
+        generateTokenAndSetCookie(newMR._id, res);
+
+        res.status(201).json({
+		_id: newMR._id, 
+		studentname: newMR.studentname,
+		
+	 });
+    } catch (error) {
+        console.error("Error in MR signup:", error.message);
+        res.status(500).json({ error: "Internal Server Error" });
+    }
+};
+
+export const mrLogin = async (req, res) => {
+    try {
+        const { id, password } = req.body;
+        const mr = await MR.findOne({ id });
+
+        if (!mr || !(await bcrypt.compare(password, mr.password))) {
+            return res.status(400).json({ error: "Invalid ID or password" });
+        }
+
+        generateTokenAndSetCookie(mr._id, res);
+        res.status(200).json({ _id: mr._id, studentname: mr.studentname });
+    } catch (error) {
+        console.error("Error in MR login:", error.message);
+        res.status(500).json({ error: "Internal Server Error" });
+    }
+};
+
+export const mrLogout = (req, res) => {
+    try {
+        res.cookie("jwt", "", { maxAge: 0 });
+        res.status(200).json({ message: "Logged out successfully" });
+    } catch (error) {
+        console.error("Error in MR logout:", error.message);
+        res.status(500).json({ error: "Internal Server Error" });
+    }
+};
+
+/** MESS AUTHORITY CONTROLLERS **/
+export const higherSignup = async (req, res) => {
+    try {
+        const { username, name, role, password, confirmPassword } = req.body;
+
+        if (password !== confirmPassword) {
+            return res.status(400).json({ error: "Passwords don't match" });
+        }
+
+        const authorityExists = await MessAuthority.findOne({ username });
+        if (authorityExists) {
+            return res.status(400).json({ error: "Username already exists" });
+        }
+
+        const salt = await bcrypt.genSalt(10);
+        const hashedPassword = await bcrypt.hash(password, salt);
+
+        const newAuthority = new MessAuthority({
+            username,
+            name,
+            role,
+            password: hashedPassword,
+        });
+
+        await newAuthority.save();
+        generateTokenAndSetCookie(newAuthority._id, res);
+
+        res.status(201).json({ _id: newAuthority._id, name: newAuthority.name });
+    } catch (error) {
+        console.error("Error in higher signup:", error.message);
+        res.status(500).json({ error: "Internal Server Error" });
+    }
+};
+
+export const higherLogin = async (req, res) => {
+    try {
+        const { username, password } = req.body;
+        const authority = await MessAuthority.findOne({ username });
+
+        if (!authority || !(await bcrypt.compare(password, authority.password))) {
+            return res.status(400).json({ error: "Invalid username or password" });
+        }
+
+        generateTokenAndSetCookie(authority._id, res);
+        res.status(200).json({ _id: authority._id, name: authority.name });
+    } catch (error) {
+        console.error("Error in higher login:", error.message);
+        res.status(500).json({ error: "Internal Server Error" });
+    }
+};
+
+export const higherLogout = (req, res) => {
+    try {
+        res.cookie("jwt", "", { maxAge: 0 });
+        res.status(200).json({ message: "Logged out successfully" });
+    } catch (error) {
+        console.error("Error in higher logout:", error.message);
+        res.status(500).json({ error: "Internal Server Error" });
+    }
 };
