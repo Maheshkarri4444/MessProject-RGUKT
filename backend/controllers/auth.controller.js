@@ -1,12 +1,12 @@
 import bcrypt from "bcryptjs";
 import Student from "../models/student.model.js";
-import MR from "../models/mr.model.js";
 import MessAuthority from "../models/messAuthority.model.js";
 import generateTokenAndSetCookie from "../utils/generateToken.js";
 
 /** STUDENT CONTROLLERS **/
 export const studentSignup = async (req, res) => {
     try {
+        res.cookie("jwt", "", { maxAge: 0 });
         const { studentname, id, mobile, password, confirmPassword, currentMess } = req.body;
 
         if (password !== confirmPassword) {
@@ -35,7 +35,8 @@ export const studentSignup = async (req, res) => {
         res.status(201).json({
 			 _id: newStudent._id, 
 			 studentname: newStudent.studentname,
-			 currentMess: newStudent.currentMess 
+			 currentMess: newStudent.currentMess,
+             role: "student"
 			});
     } catch (error) {
         console.error("Error in student signup:", error.message);
@@ -45,6 +46,7 @@ export const studentSignup = async (req, res) => {
 
 export const studentLogin = async (req, res) => {
     try {
+        res.cookie("jwt", "", { maxAge: 0 });
         const { id, password } = req.body;
         const student = await Student.findOne({ id });
 
@@ -53,7 +55,7 @@ export const studentLogin = async (req, res) => {
         }
 
         generateTokenAndSetCookie(student._id, res);
-        res.status(200).json({ _id: student._id, studentname: student.studentname });
+        res.status(200).json({ _id: student._id, studentname: student.studentname , role: "student"});
     } catch (error) {
         console.error("Error in student login:", error.message);
         res.status(500).json({ error: "Internal Server Error" });
@@ -70,132 +72,74 @@ export const studentLogout = (req, res) => {
     }
 };
 
-/** MR CONTROLLERS **/
-export const mrSignup = async (req, res) => {
-    try {
-        const { studentname, id, mobile, password, confirmPassword, year, currentMess, class: className } = req.body;
 
-        if (password !== confirmPassword) {
-            return res.status(400).json({ error: "Passwords don't match" });
-        }
-
-        const mrExists = await MR.findOne({ id });
-        if (mrExists) {
-            return res.status(400).json({ error: "MR ID already exists" });
-        }
-
-        const salt = await bcrypt.genSalt(10);
-        const hashedPassword = await bcrypt.hash(password, salt);
-
-        const newMR = new MR({
-            studentname,
-            id,
-            mobile,
-            password: hashedPassword,
-            year,
-            currentMess,
-            class: className,
-        });
-
-        await newMR.save();
-        generateTokenAndSetCookie(newMR._id, res);
-
-        res.status(201).json({
-		_id: newMR._id, 
-		studentname: newMR.studentname,
-		
-	 });
-    } catch (error) {
-        console.error("Error in MR signup:", error.message);
-        res.status(500).json({ error: "Internal Server Error" });
-    }
-};
-
-export const mrLogin = async (req, res) => {
-    try {
-        const { id, password } = req.body;
-        const mr = await MR.findOne({ id });
-
-        if (!mr || !(await bcrypt.compare(password, mr.password))) {
-            return res.status(400).json({ error: "Invalid ID or password" });
-        }
-
-        generateTokenAndSetCookie(mr._id, res);
-        res.status(200).json({ _id: mr._id, studentname: mr.studentname });
-    } catch (error) {
-        console.error("Error in MR login:", error.message);
-        res.status(500).json({ error: "Internal Server Error" });
-    }
-};
-
-export const mrLogout = (req, res) => {
+export const messAuthoritySignup = async (req, res) => {
     try {
         res.cookie("jwt", "", { maxAge: 0 });
-        res.status(200).json({ message: "Logged out successfully" });
-    } catch (error) {
-        console.error("Error in MR logout:", error.message);
-        res.status(500).json({ error: "Internal Server Error" });
-    }
-};
+        const { name, role, authority_role, mobile, email, password } = req.body;
 
-/** MESS AUTHORITY CONTROLLERS **/
-export const higherSignup = async (req, res) => {
-    try {
-        const { username, name, mobile , role, password, confirmPassword } = req.body;
-
-        if (password !== confirmPassword) {
-            return res.status(400).json({ error: "Passwords don't match" });
+        // Check if the email already exists
+        const existingUser = await MessAuthority.findOne({ email });
+        if (existingUser) {
+            return res.status(400).json({ message: "Email already exists." });
         }
 
-        const authorityExists = await MessAuthority.findOne({ username });
-        if (authorityExists) {
-            return res.status(400).json({ error: "Username already exists" });
-        }
+        // Hash the password
+        const hashedPassword = await bcrypt.hash(password, 10);
 
-        const salt = await bcrypt.genSalt(10);
-        const hashedPassword = await bcrypt.hash(password, salt);
-
-        const newAuthority = new MessAuthority({
-            username,
+        // Create a new MessAuthority
+        const messAuthority = new MessAuthority({
             name,
             role,
+            authority_role: role === "higher" ? authority_role : null,
             mobile,
+            email,
             password: hashedPassword,
         });
 
-        await newAuthority.save();
-        generateTokenAndSetCookie(newAuthority._id, res);
-
-        res.status(201).json({ _id: newAuthority._id, name: newAuthority.name });
+        await messAuthority.save();
+        generateTokenAndSetCookie(messAuthority._id, res);
+        res.status(201).json({ message: "Mess Authority registered successfully.",
+            _id: messAuthority._id, name: messAuthority.name , role: messAuthority.role
+         });
     } catch (error) {
-        console.error("Error in higher signup:", error.message);
-        res.status(500).json({ error: "Internal Server Error" });
+        res.status(500).json({ message: error.message });
     }
 };
 
-export const higherLogin = async (req, res) => {
-    try {
-        const { username, password } = req.body;
-        const authority = await MessAuthority.findOne({ username });
-
-        if (!authority || !(await bcrypt.compare(password, authority.password))) {
-            return res.status(400).json({ error: "Invalid username or password" });
-        }
-
-        generateTokenAndSetCookie(authority._id, res);
-        res.status(200).json({ _id: authority._id, name: authority.name });
-    } catch (error) {
-        console.error("Error in higher login:", error.message);
-        res.status(500).json({ error: "Internal Server Error" });
-    }
-};
-
-export const higherLogout = (req, res) => {
+// Login function
+export const messAuthorityLogin = async (req, res) => {
     try {
         res.cookie("jwt", "", { maxAge: 0 });
-        res.status(200).json({ message: "Logged out successfully" });
+        const { email, password } = req.body;
+
+        // Check if the user exists
+        const messAuthority = await MessAuthority.findOne({ email });
+        if (!messAuthority) {
+            return res.status(404).json({ message: "User not found." });
+        }
+
+        // Validate the password
+        const isPasswordValid = await bcrypt.compare(password, messAuthority.password);
+        if (!isPasswordValid) {
+            return res.status(401).json({ message: "Invalid credentials." });
+        }
+
+        generateTokenAndSetCookie(messAuthority._id, res);
+        res.status(200).json({ message: "Logged in successfully.", 
+            _id: messAuthority._id, name: messAuthority.name , role: messAuthority.role
+        });
     } catch (error) {
-        console.error("Error in higher logout:", error.message);
-        res.status(500).json({ error: "Internal Server Error" });
+        res.status(500).json({ message: error.message });
+    }
+};
+
+// Logout function
+export const messAuthorityLogout = (req, res) => {
+    try {
+        res.cookie("jwt", "", { maxAge: 0 });
+        res.status(200).json({ message: "Logged out successfully." });
+    } catch (error) {
+        res.status(500).json({ message: error.message });
     }
 };

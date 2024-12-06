@@ -2,16 +2,22 @@ import Feedback from "../models/feedback.model.js";
 
 const createFeedback = async (req, res) => {
     try {
-        const { feedback_rating, feedback_message } = req.body;
+        const {
+            food_rating,
+            service_rating,
+            hygiene_rating,
+            overall_rating,
+            feedback_message,
+        } = req.body;
         const { feedback_type } = req.params; // Extract feedback_type from URL parameters
         const { messId } = req.params;
         const senderId = req.user._id; // Assume `protectRoute` middleware sets `req.user`
-        if (feedback_rating < 0 || feedback_rating > 5) {
+        if ( overall_rating < 0 || overall_rating > 5) {
             return res.status(400).json({ error: "Feedback rating must be between 0 and 5" });
         }
 
         // Validate feedback_type
-        const validFeedbackTypes = ["daily", "weekly", "monthly"];
+        const validFeedbackTypes = [ "weekly", "monthly"];
         if (!validFeedbackTypes.includes(feedback_type)) {
             return res.status(400).json({ error: "Invalid feedback type" });
         }
@@ -20,7 +26,10 @@ const createFeedback = async (req, res) => {
         const newFeedback = new Feedback({
             senderId,
             mess_number:messId,
-            feedback_rating,
+            food_rating,
+            service_rating,
+            hygiene_rating,
+            overall_rating,
             feedback_message,
             feedback_type, // Add feedback_type to the feedback document
         });
@@ -44,7 +53,7 @@ export const getFeedback = async (req, res) => {
         const { feedback_type, messId } = req.params; // Extract feedback_type and messId from params
 
         // Validate feedback_type
-        const validFeedbackTypes = ["daily", "weekly", "monthly"];
+        const validFeedbackTypes = ["weekly", "monthly"];
         if (!validFeedbackTypes.includes(feedback_type)) {
             return res.status(400).json({ error: "Invalid feedback type" });
         }
@@ -59,10 +68,7 @@ export const getFeedback = async (req, res) => {
         const now = new Date();
         let startDate, endDate;
 
-        if (feedback_type === "daily") {
-            startDate = new Date(now.setHours(0, 0, 0, 0)); // Start of the current day
-            endDate = new Date(now.setHours(23, 59, 59, 999)); // End of the current day
-        } else if (feedback_type === "weekly") {
+        if (feedback_type === "weekly") {
             const dayOfWeek = now.getDay(); // Current day of the week (0 = Sunday)
             const diffToMonday = dayOfWeek === 0 ? -6 : 1 - dayOfWeek; // Difference to Monday
             startDate = new Date(now.setDate(now.getDate() + diffToMonday));

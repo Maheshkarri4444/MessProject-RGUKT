@@ -2,18 +2,27 @@ import mongoose from "mongoose";
 
 const messAuthoritySchema = new mongoose.Schema(
     {
-        username:{
-            type:String,
-            required:true,
-            unique:true
-        },
         name: {
             type: String,
             required: true,
         },
-        role:{
+        role: {
             type: String,
-            required:true,
+            required: true,
+            enum: ['mr', 'higher'],
+        },
+        authority_role: {
+            type: String,
+            validate: {
+                validator: function (value) {
+                    // If role is "higher", authority_role must not be empty
+                    if (this.role === 'higher' && (!value || value.trim() === '')) {
+                        return false;
+                    }
+                    return true;
+                },
+                message: "Authority role is required when role is 'higher'.",
+            },
         },
         mobile: {
             type: String, // Use String if you plan to store numbers with country codes or spaces
@@ -25,26 +34,27 @@ const messAuthoritySchema = new mongoose.Schema(
                 message: (props) => `${props.value} is not a valid mobile number!`,
             },
         },
+        email: {
+            type: String,
+            required: true,
+            unique: true, // Ensure email uniqueness
+            validate: {
+                validator: function (v) {
+                    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v); // Basic email regex validation
+                },
+                message: (props) => `${props.value} is not a valid email!`,
+            },
+        },
         password: {
             type: String,
             minlength: 5,
             // Make password optional for Google logins
             default: null,
         },
-        googleId: {
-            type: String, // Store the Google user ID
-            unique: true,
-            sparse: true, // Allows unique but nullable values
-        },
-        authProvider: {
-            type: String,
-            enum: ["local", "google"],
-            default: "local",
-        },
     },
     { timestamps: true }
 );
 
-const MessAuthority = mongoose.model("MessAuthoritys", messAuthoritySchema);
+const MessAuthority = mongoose.model("MessAuthority", messAuthoritySchema);
 
 export default MessAuthority;

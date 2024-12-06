@@ -1,10 +1,10 @@
 import express from "express";
-import createFeedback from "../controllers/feedback.controller.js"
+import { updateStudentProfile } from "../controllers/profile.controller.js";
 import protectRoute from "../middleware/protectRoute.js";
 
 const router = express.Router();
 //students
-router.post("/create/:messId/:feedback_type",protectRoute, createFeedback);
+router.post("/",protectRoute, updateStudentProfile);
 
 
 

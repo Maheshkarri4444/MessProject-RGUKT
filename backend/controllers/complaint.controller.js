@@ -1,4 +1,5 @@
 import Complaint from "../models/complaint.model.js";
+import MessAuthority from "../models/messAuthority.model.js";
 import fs from "fs"; // For deleting old images (if you're using local storage)
 
 export const complaint = async (req, res) => {
@@ -136,73 +137,84 @@ export const deleteComplaint = async (req, res) => {
     }
 };
 
-export const getDailyComplaints = async (req, res) => {
+
+export const getComplaints = async (req, res) => {
     try {
-        const { messId } = req.params;
+        const messId = req.params.messId;
+        const authorityId = req.user.id; // Assume `protectRoute_authority` middleware adds `user` info to `req`
 
-        // Validate messId
-        const validMessIds = ["dh1", "dh2", "dh3", "dh4", "dh5", "dh6"];
-        if (!validMessIds.includes(messId)) {
-            return res.status(400).json({ error: "Invalid mess ID" });
+        // Fetch the logged-in authority details
+        const authority = await MessAuthority.findById(authorityId);
+        if (!authority) {
+            return res.status(404).json({ message: "Authority not found" });
         }
 
-        // Calculate date range for the current day
-        const now = new Date();
-        const startDate = new Date(now.setHours(0, 0, 0, 0)); // Start of the day
-        const endDate = new Date(now.setHours(23, 59, 59, 999)); // End of the day
+        let complaints;
 
-        // Fetch complaints for the current day and messId
-        const complaints = await Complaint.find({
-            mess_number: messId,
-            createdAt: { $gte: startDate, $lt: endDate },
-        }).sort({ createdAt: -1 }); // Sort by newest first
+        if (authority.role === "mr") {
+            // Fetch all complaints related to the mess
+            complaints = await Complaint.find({ mess_number: messId });
 
-        // Check if complaints exist
-        if (complaints.length === 0) {
-            return res.status(404).json({ message: "No complaints found for the current day" });
+        } else if (authority.role === "higher") {
+            // Fetch only complaints where `sent_authority` is true
+            complaints = await Complaint.find({ mess_number: messId, sent_authority: true });
+        } else {
+            return res.status(403).json({ message: "Access denied" });
         }
 
-        res.status(200).json(complaints);
+        res.status(200).json({
+            message: "Complaints retrieved successfully",
+            complaints,
+        });
     } catch (error) {
-        console.error("Error in getDailyComplaints controller:", error.message);
-        res.status(500).json({ error: "Internal Server Error at getDailyComplaints controller" });
+        res.status(500).json({ message: error.message });
     }
 };
 
-export const getWeeklyComplaints = async (req, res) => {
+export const updateComplaintStatus = async (req, res) => {
     try {
-        const { messId } = req.params;
+        const { complaintId } = req.params;
+        const { status, sent_authority } = req.body; // Expect both status and sent_authority in the request body
 
-        // Validate messId
-        const validMessIds = ["dh1", "dh2", "dh3", "dh4", "dh5", "dh6"];
-        if (!validMessIds.includes(messId)) {
-            return res.status(400).json({ error: "Invalid mess ID" });
+        const authorityId = req.user.id;
+        const authority = await MessAuthority.findById(authorityId);
+
+        if (!authority) {
+            return res.status(404).json({ message: "Authority not found" });
         }
 
-        // Calculate date range for the current week
-        const now = new Date();
-        const dayOfWeek = now.getDay(); // Current day of the week (0 = Sunday)
-        const diffToMonday = dayOfWeek === 0 ? -6 : 1 - dayOfWeek; // Difference to Monday
-        const startDate = new Date(now.setDate(now.getDate() + diffToMonday));
-        startDate.setHours(0, 0, 0, 0); // Start of the week (Monday)
-        const endDate = new Date(startDate);
-        endDate.setDate(endDate.getDate() + 6);
-        endDate.setHours(23, 59, 59, 999); // End of the week (Sunday)
+        const complaint = await Complaint.findById(complaintId);
 
-        // Fetch complaints for the current week and messId
-        const complaints = await Complaint.find({
-            mess_number: messId,
-            createdAt: { $gte: startDate, $lt: endDate },
-        }).sort({ createdAt: -1 }); // Sort by newest first
-
-        // Check if complaints exist
-        if (complaints.length === 0) {
-            return res.status(404).json({ message: "No complaints found for the current week" });
+        if (!complaint) {
+            return res.status(404).json({ message: "Complaint not found" });
         }
 
-        res.status(200).json(complaints);
+        if (authority.role === "mr") {
+            // Ensure the complaint belongs to the mess the MR is responsible for
+            if (complaint.mess_number !== authority.authority_role) {
+                return res.status(403).json({ message: "Not authorized to update this complaint" });
+            }
+            // Allow MR to update both `status` and `sent_authority`
+            if (status !== undefined) complaint.status = status;
+            if (sent_authority !== undefined) complaint.sent_authority = sent_authority;
+
+        } else if (authority.role === "higher") {
+            // Allow higher authority to update `status` only if `sent_authority` is true
+            if (!complaint.sent_authority) {
+                return res.status(403).json({ message: "Not authorized to update this complaint" });
+            }
+            if (status !== undefined) complaint.status = status;
+        } else {
+            return res.status(403).json({ message: "Access denied" });
+        }
+
+        await complaint.save();
+
+        res.status(200).json({
+            message: "Complaint updated successfully",
+            complaint,
+        });
     } catch (error) {
-        console.error("Error in getWeeklyComplaints controller:", error.message);
-        res.status(500).json({ error: "Internal Server Error at getWeeklyComplaints controller" });
+        res.status(500).json({ message: error.message });
     }
 };

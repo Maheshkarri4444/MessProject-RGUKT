@@ -12,7 +12,28 @@ const feedbackSchema = new mongoose.Schema(
             required: true,
             enum: ["dh1", "dh2", "dh3", "dh4", "dh5", "dh6"], 
         },
-        feedback_rating: {
+        food_rating: {
+            type: Number, // Use Number for ratings
+            required: true,
+            min: 0, // Minimum allowed rating
+            max: 5,
+            default:0 // Maximum allowed rating
+        },
+        service_rating: {
+            type: Number, // Use Number for ratings
+            required: true,
+            min: 0, // Minimum allowed rating
+            max: 5,
+            default:0 // Maximum allowed rating
+        },
+        hygiene_rating: {
+            type: Number, // Use Number for ratings
+            required: true,
+            min: 0, // Minimum allowed rating
+            max: 5,
+            default:0 // Maximum allowed rating
+        },
+        overall_rating: {
             type: Number, // Use Number for ratings
             required: true,
             min: 0, // Minimum allowed rating
@@ -27,7 +48,7 @@ const feedbackSchema = new mongoose.Schema(
         feedback_type: {
             type: String,
             required: true,
-            enum: ["daily", "weekly", "monthly"], // Valid options for feedback type
+            enum: [ "weekly", "monthly"], // Valid options for feedback type
         },
     },
     { timestamps: true }

@@ -1,5 +1,4 @@
 import jwt from "jsonwebtoken";
-import Mr from "../models/mr.model.js"; // Assuming you have a model for MR
 import MessAuthority from "../models/messAuthority.model.js"; // Assuming you have a model for MessAuthority
 
 const protectRoute = async (req, res, next) => {
@@ -17,16 +16,11 @@ const protectRoute = async (req, res, next) => {
         }
 
         // Check in the Mr collection
-        let user = await Mr.findById(decoded.userId).select("-password");
-
-        // If not found in MR, check in the MessAuthority collection
-        if (!user) {
-            user = await MessAuthority.findById(decoded.userId).select("-password");
-        }
+        let user = await MessAuthority.findById(decoded.userId).select("-password");
 
         // If user is not found in any collection, return an error
         if (!user) {
-            return res.status(400).json({ error: "User not found in any system" });
+            return res.status(400).json({ error: "You do not belong to MessAuthority" });
         }
 
         // Attach user to the request object
